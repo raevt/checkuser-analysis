@@ -47,7 +47,7 @@ def get_addresses(logs):
 
         elif re.search(pattern_ipv6, log):
             # Save the match so we can split it
-            item = re.search(pattern_ipv4, log).group()
+            item = re.search(pattern_ipv6, log).group()
 
             # Split on the first '/' encountered
             try:
@@ -59,8 +59,6 @@ def get_addresses(logs):
             # Add the range to list
             addresses['ipv6'].append(cidr)
         else:
-            # Error handling, inform the user
-            print(f"No match found for {log}! Skipping...")
             continue
     
     return addresses
