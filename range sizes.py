@@ -9,68 +9,83 @@
 """
 
 import re
+import os
 import csv
 
 def get_logs():
-    logs = []
     with open('checks.txt', 'r', encoding='utf-8') as f:
-        for line in f:
-            logs.append(line)
+        logs = f.read().splitlines()
     return logs
 
 def get_addresses(logs):
-    ipv4_addresses = []
-    ipv6_addresses = []
+    # Setup a dict to hold both lists for easier handling
+    addresses = {
+        "ipv4": [],
+        "ipv6": [],
+    }
+
+    # Define the regex once instead of in the loop
+    pattern_ipv4 = r"\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b"
+    pattern_ipv6 = r"\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}(?:/\d{1,3})?\b"
+
     for log in logs:
-        pattern_ipv4 = r"\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b"
-        pattern_ipv6 = r"\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}(?:/\d{1,3})?\b"
-        match_ipv4 = re.search(pattern_ipv4, log)
-        match_ipv6 = re.search(pattern_ipv6, log)
-        if match_ipv4:
-            ipv4_addresses.append(match_ipv4.group())
-        if match_ipv6:
-            ipv6_addresses.append(match_ipv6.group())
-    return ipv4_addresses, ipv6_addresses
+        # Iterate through the log handling matches as they occur
+        # and skipping places there were no matches after saying something.
+        if re.search(pattern_ipv4, log):
+            # Save the match so we can split it
+            item = re.search(pattern_ipv4, log).group()
 
-def get_ipv4_dist(ipv4_addresses):
-    ipv4_dist = []
-    for string in ipv4_addresses:
-        try:
-            IP, size = string.split('/')
-            ipv4_dist.append(size)
-        except:
-            ipv4_dist.append('32')
-    return ipv4_dist
+            # Split on the first '/' encountered
+            try:
+                _ip, cidr = item.split('/', 1)
+            except ValueError:
+                # If no cidr found, default to smallest.
+                cidr = "32"
+            
+            # Add the range to list
+            addresses['ipv4'].append(cidr)
 
-def get_ipv6_dist(ipv6_addresses):
-    ipv6_dist = []
-    for string in ipv6_addresses:
-        try:
-            IP, size = string.split('/')
-            ipv6_dist.append(size)
-        except:
-            ipv4_dist.append('128')
-    return ipv6_dist
+        elif re.search(pattern_ipv6, log):
+            # Save the match so we can split it
+            item = re.search(pattern_ipv4, log).group()
 
-def export_ipv4(ipv4_dist):
-    with open('ipv4_ranges.csv', 'w', newline='') as csv_file:
-        writer = csv.writer(csv_file)
-        for range_size in ipv4_dist:
-            writer.writerow([range_size])
+            # Split on the first '/' encountered
+            try:
+                _ip, cidr = item.split('/', 1)
+            except ValueError:
+                # If no cidr found, default to smallest.
+                cidr = "128"
 
-def export_ipv6(ipv6_dist):
-    with open('ipv6_ranges.csv', 'w', newline='') as csv_file:
-        writer = csv.writer(csv_file)
-        for range_size in ipv6_dist:
-            writer.writerow([range_size])
+            # Add the range to list
+            addresses['ipv6'].append(cidr)
+        else:
+            # Error handling, inform the user
+            print(f"No match found for {log}! Skipping...")
+            continue
+    
+    return addresses
+
+
+def export_ips(cidr):  
+    # There are two keys in the dict, ipv4 and ipv6
+    # Write each type to a separate file
+    for v in cidr:
+        with open(f"{v}_ranges.csv", "w", newline='') as csv_file:
+            writer = csv.writer(csv_file)
+            for rng in cidr[v]:
+                writer.writerow([rng])
 
 def main():
-    logs = get_logs()
-    ipv4_addresses, ipv6_addresses = get_addresses(logs)
-    ipv4_dist = get_ipv4_dist(ipv4_addresses)
-    ipv6_dist = get_ipv6_dist(ipv6_addresses)
-    export_ipv4(ipv4_dist)
-    export_ipv6(ipv6_dist)
+    # First, check and make sure neither file exists already
+    if (
+        os.path.exists("./ipv4_ranges.csv")
+        or os.path.exists("./ipv6_ranges.csv")
+    ):
+        print("Output files already exist! Remove and try again...")
+        raise SystemExit()
+    
+    # Do the magic
+    export_ips(get_addresses(get_logs()))
 
 if __name__ == "__main__":
     main()
