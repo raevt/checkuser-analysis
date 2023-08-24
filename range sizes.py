@@ -8,14 +8,16 @@
     Note that this outputs two files: one for ipv4, and one for ipv6.
 """
 
-import re
-import os
 import csv
+import os
+import re
+
 
 def get_logs():
-    with open('checks.txt', 'r', encoding='utf-8') as f:
+    with open("checks.txt", "r", encoding="utf-8") as f:
         logs = f.read().splitlines()
     return logs
+
 
 def get_addresses(logs):
     # Setup a dict to hold both lists for easier handling
@@ -37,13 +39,13 @@ def get_addresses(logs):
 
             # Split on the first '/' encountered
             try:
-                _ip, cidr = item.split('/', 1)
+                _ip, cidr = item.split("/", 1)
             except ValueError:
                 # If no cidr found, default to smallest.
                 cidr = "32"
-            
+
             # Add the range to list
-            addresses['ipv4'].append(cidr)
+            addresses["ipv4"].append(cidr)
 
         elif re.search(pattern_ipv6, log):
             # Save the match so we can split it
@@ -51,39 +53,38 @@ def get_addresses(logs):
 
             # Split on the first '/' encountered
             try:
-                _ip, cidr = item.split('/', 1)
+                _ip, cidr = item.split("/", 1)
             except ValueError:
                 # If no cidr found, default to smallest.
                 cidr = "128"
 
             # Add the range to list
-            addresses['ipv6'].append(cidr)
+            addresses["ipv6"].append(cidr)
         else:
             continue
-    
+
     return addresses
 
 
-def export_ips(cidr):  
+def export_ips(cidr):
     # There are two keys in the dict, ipv4 and ipv6
     # Write each type to a separate file
     for v in cidr:
-        with open(f"{v}_ranges.csv", "w", newline='') as csv_file:
+        with open(f"{v}_ranges.csv", "w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             for rng in cidr[v]:
                 writer.writerow([rng])
 
+
 def main():
     # First, check and make sure neither file exists already
-    if (
-        os.path.exists("./ipv4_ranges.csv")
-        or os.path.exists("./ipv6_ranges.csv")
-    ):
+    if os.path.exists("./ipv4_ranges.csv") or os.path.exists("./ipv6_ranges.csv"):
         print("Output files already exist! Remove and try again...")
         raise SystemExit()
-    
+
     # Do the magic
     export_ips(get_addresses(get_logs()))
+
 
 if __name__ == "__main__":
     main()
