@@ -1,10 +1,11 @@
 """
     Rae Adimer
 
-    This program takes a CheckUser log and outputs a csv with a list of checked range sizes.
+    This program takes a log log and outputs a csv with a list of included range sizes.
+    I've used this with CheckUser and block logs.
 
     USAGE: 
-    Copy log entries manually from the CheckUser log, save as 'checks.txt' in the same directory as this file.
+    Copy log entries manually from the log, save as 'logs.txt' in the same directory as this file.
     Note that this outputs two files: one for ipv4, and one for ipv6.
 """
 
@@ -14,7 +15,7 @@ import re
 
 
 def get_logs():
-    with open("checks.txt", "r", encoding="utf-8") as f:
+    with open("logs.txt", "r", encoding="utf-8") as f:
         logs = f.read().splitlines()
     return logs
 
@@ -29,6 +30,7 @@ def get_addresses(logs):
     # Define the regex once instead of in the loop
     pattern_ipv4 = r"\b(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?\b"
     pattern_ipv6 = r"\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}(?:/\d{1,3})?\b"
+    pattern_ipv6_short = pattern_ipv6_short = r"\b([A-Fa-f0-9]{1,4}:)*::(\/\d{1,3})\b"
 
     for log in logs:
         # Iterate through the log handling matches as they occur
@@ -50,6 +52,19 @@ def get_addresses(logs):
         elif re.search(pattern_ipv6, log):
             # Save the match so we can split it
             item = re.search(pattern_ipv6, log).group()
+
+            # Split on the first '/' encountered
+            try:
+                _ip, cidr = item.split("/", 1)
+            except ValueError:
+                # If no cidr found, default to smallest.
+                cidr = "128"
+
+            # Add the range to list
+            addresses["ipv6"].append(cidr)
+        elif re.search(pattern_ipv6_short, log):
+            # Save the match so we can split it
+            item = re.search(pattern_ipv6_short, log).group()
 
             # Split on the first '/' encountered
             try:
